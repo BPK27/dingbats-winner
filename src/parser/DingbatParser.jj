@@ -1,0 +1,275 @@
+/**
+ * JavaCC template file created by SF JavaCC plugin 1.5.17+ wizard for JavaCC 1.5.0+
+ */
+options
+{
+  JDK_VERSION = "1.5";
+  static = false;
+}
+
+PARSER_BEGIN(DingbatParser)
+package parser;
+import data_structs.Symbol;
+import java.util.*;
+
+
+public class DingbatParser
+{
+  
+  
+
+    TreeMap<Integer, Symbol > dingbat = new TreeMap<Integer, Symbol >();
+
+    public TreeMap<Integer, Symbol > parse()
+    {
+      
+    System.out.println("Parsing clue...");
+    
+
+      try
+      {
+  
+        dingbat = one_line();
+        
+        
+        
+      }
+      catch (Exception e)
+      {
+        System.out.println("NOK.");
+      }
+      return dingbat;
+    }
+  
+}
+
+PARSER_END(DingbatParser)
+
+SKIP :
+{
+  " "
+| "\r"
+| "\t"
+| "\n"
+}
+
+TOKEN : /* TAGS */
+{
+  < LOCATION : "loc" >
+| < ANCHOR : "anchor" >
+| < ROTATION: "rot" >
+| < SIZE: "size" >
+| < SPACING: "sp" >
+| < STYLING: "style" >
+| < SOLIDITY: "sol" >
+| < CONTAINS: "con" >
+| < SHAPE: "shape" >
+}
+
+TOKEN : /* SYMBOLS*/
+{
+  < SYMBOL : < DIGIT >|< ALPHA >|< SHAPES > >
+| < #SHAPES: ("rectangle"|"circle"|"asterix") >
+| < #ALPHA: ["a"-"z","A"-"Z"] >
+| < DIGIT : [ "0"-"9" ] >
+}
+
+TOKEN : /* INFO */
+{
+  < DIRECTION : "NORTH"|"NE"|"NNE"|"ENE"|"EAST"|"SE"|"SSE"|"ESE"|"SOUTH"|"SSW"|"SW"|"WSW"|"WEST"|"WNW"|"NW"|"NNW" >
+| < POS: "CENTRE"|"LEFT"|"RIGHT"|"TOP"|"BOTTOM" >
+| < ID : (< DIGIT >)+ >
+| < MEASURE: ("large"|"regular"|"small"|"none") >
+| < STYLE: ("italic"|"regular") >
+| < FORMAT: ("bold"|"hollow"|"thin"|"normal") >
+}
+
+
+
+TreeMap<Integer, Symbol> one_line() :
+{
+  Token symbol;
+  Token idNum;
+  Token dir;
+  Symbol s1 = new Symbol();
+  Symbol s2 = new Symbol();
+  TreeMap<Integer, Symbol > temp = new TreeMap<Integer, Symbol >();
+  int id;
+}
+{
+  symbol = < SYMBOL >
+  {
+    s1.setSym(symbol.image.toString());
+  }
+  "["< LOCATION >":"
+  dir = < POS >"]"
+  {	s1.setLocation(dir.image.toString());
+  }
+  "["< ANCHOR >":"
+  idNum = < ID >"]"
+  {
+    id = Integer.parseInt(idNum.image);
+    s1.setID(id);
+  }
+  Tags(s1)
+  {
+    temp.put(s1.getID(), s1);
+  }
+
+  
+  (s2 = nextSymbol(id)
+  {
+	temp.put(s2.getID(), s2);
+	id = s2.getID();
+  })* ";"
+  { return temp; }
+}
+
+void Tags(Symbol s) :
+{
+  String rot;
+  String size;
+  String space;
+  String style;
+  String solid;
+  boolean shape;
+}
+{
+ "["
+  	(rot = rotation(){s.setRotation(rot); }
+  	|
+  	size = size(){s.setSize(size);}
+  	|
+  	space = space(){s.setSpace(space);}
+  	|
+  	style = style(){s.setStyle(style);}
+  	|
+  	solid = solidity(){s.setSolidity(solid);}
+  	)
+ "]"
+ Tags(s)
+|
+ {}
+}
+
+Symbol nextSymbol(int id) :
+{
+  Symbol sym = new Symbol();
+  int newID = id+1;
+  Token symbol;
+  Token dir;
+  Token refID;
+  Token idNum;
+}
+{
+  symbol = < SYMBOL >  {sym.setSym(symbol.image.toString());}
+  "["< LOCATION >":"
+  dir = < DIRECTION > {sym.setLocation(dir.image.toString()); sym.setID(newID);}
+   (
+     "("refID = < ID >")" {sym.setReferenceSymbol(Integer.parseInt(refID.image));}
+     |
+     {}{sym.setReferenceSymbol(id);}
+   )"]"
+   (
+    LOOKAHEAD(2)
+   "["< ANCHOR >":"
+   idNum = < ID >"]"
+   {
+    id = Integer.parseInt(idNum.image);
+    sym.setID(id);
+   }
+ |
+ {}
+)
+   Tags(sym)
+   {
+     return sym;
+   }
+   
+}
+
+int anchor(int id) :
+{
+  Token t;
+}
+{
+  "["
+  < ANCHOR >":"
+  t = < ID >"]"
+  {
+    return Integer.parseInt(t.image);
+  }
+|
+{} {return id++;}
+}
+
+String rotation() :
+{
+  Token t;
+}
+{
+ < ROTATION >":"
+ t =< DIRECTION >
+ {
+   return t.image.toString();
+ }
+ 
+}
+
+String size() :
+{
+  Token t;
+}
+{
+ < SIZE >":"
+ t = < MEASURE >
+ {
+   return t.image.toString();
+ }
+}
+
+String space() :
+{Token t;}
+{
+  < SPACING >":"
+  t = < MEASURE >
+   {
+   return t.image.toString();
+ }
+}
+
+String style() :
+{Token t;}
+{
+  < STYLING >":"
+  t = < STYLE >
+   {
+   return t.image.toString();
+ }
+}
+
+String solidity() :
+{
+  Token t;
+}
+{
+ < SOLIDITY >":"
+ t = < FORMAT >
+ {
+   return t.image.toString();
+ }
+}
+
+boolean shape() :
+{}
+{
+  < SHAPE >
+  {return true;}
+}
+
+boolean contains() :
+{}
+{
+  < CONTAINS >":"one_line()
+  {return true;}    
+}
